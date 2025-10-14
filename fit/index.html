@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FitRec: Personalized Fitness Plan Recommendation</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>FitRec: Personalized Fitness Plan Recommendation</h1>
+            <p>AI-powered fitness recommendations based on your health profile and goals</p>
+        </header>
+
+        <div class="main-content">
+            <div class="user-input-section">
+                <h2>Your Health Profile</h2>
+                <form id="userProfileForm">
+                    <div class="form-group">
+                        <label for="age">Age:</label>
+                        <input type="number" id="age" min="18" max="80" value="35">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="gender">Gender:</label>
+                        <select id="gender">
+                            <option value="M">Male</option>
+                            <option value="F">Female</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="fitnessLevel">Current Fitness Level (0-10):</label>
+                        <input type="range" id="fitnessLevel" min="0" max="10" value="5">
+                        <span id="fitnessLevelValue">5</span>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="goal">Primary Goal:</label>
+                        <select id="goal">
+                            <option value="weight_loss">Weight Loss</option>
+                            <option value="muscle_gain">Muscle Gain</option>
+                            <option value="endurance">Endurance Improvement</option>
+                            <option value="maintenance">Maintenance</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="availableTime">Available Time (minutes per session):</label>
+                        <input type="number" id="availableTime" min="20" max="120" value="45">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="preferredIntensity">Preferred Intensity:</label>
+                        <select id="preferredIntensity">
+                            <option value="Low">Low</option>
+                            <option value="Medium" selected>Medium</option>
+                            <option value="High">High</option>
+                        </select>
+                    </div>
+                    
+                    <button type="button" id="getRecommendations">Get Personalized Recommendations</button>
+                </form>
+            </div>
+
+            <div class="recommendations-section">
+                <h2>Your Personalized Fitness Plan</h2>
+                <div id="recommendationsContainer">
+                    <p class="placeholder">Complete your profile and click "Get Personalized Recommendations" to see your custom fitness plan.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="insights-section">
+            <h2>Fitness Insights</h2>
+            <div class="insights-container">
+                <div class="insight-card">
+                    <h3>Activity Effectiveness</h3>
+                    <div id="activityEffectivenessChart"></div>
+                </div>
+                <div class="insight-card">
+                    <h3>Calories vs. Duration</h3>
+                    <div id="caloriesDurationChart"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="data.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
