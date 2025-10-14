@@ -1,249 +1,209 @@
-// script.js - Complete fixed version
+// script.js - Fixed and enhanced version
+
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('FitRec script loaded successfully');
-    
-    const recommendationButton = document.querySelector('button');
-    const fitnessPlanSection = document.querySelector('#fitnessPlan');
-    
-    if (recommendationButton) {
-        console.log('Recommendation button found');
-        recommendationButton.addEventListener('click', generateFitnessPlan);
-    } else {
-        console.error('Recommendation button not found!');
+    const recommendationButton = document.getElementById('getRecommendations');
+    const fitnessLevelSlider = document.getElementById('fitnessLevel');
+    const fitnessLevelValue = document.getElementById('fitnessLevelValue');
+
+    // Update fitness level display
+    if (fitnessLevelSlider && fitnessLevelValue) {
+        fitnessLevelSlider.addEventListener('input', function() {
+            fitnessLevelValue.textContent = this.value;
+        });
     }
 
-    function generateFitnessPlan() {
-        console.log('Generate button clicked');
-        
-        // Get form values - using more flexible selectors
-        const age = getInputValue('age');
-        const gender = getInputValue('gender');
-        const fitnessLevel = getInputValue('fitnessLevel');
-        const primaryGoal = getInputValue('primaryGoal');
-        const availableTime = getInputValue('availableTime');
-        const preferredIntensity = getInputValue('preferredIntensity');
+    if (recommendationButton) {
+        recommendationButton.addEventListener('click', function() {
+            generateAndDisplayRecommendations();
+        });
+    }
 
-        console.log('Form values:', {age, gender, fitnessLevel, primaryGoal, availableTime, preferredIntensity});
+    function generateAndDisplayRecommendations() {
+        // Get all form values
+        const age = parseInt(document.getElementById('age').value);
+        const gender = document.getElementById('gender').value;
+        const fitnessLevel = parseInt(document.getElementById('fitnessLevel').value);
+        const goal = document.getElementById('goal').value;
+        const availableTime = parseInt(document.getElementById('availableTime').value);
+        const preferredIntensity = document.getElementById('preferredIntensity').value;
 
-        // Validate all fields
-        if (!age || !gender || !fitnessLevel || !primaryGoal || !availableTime || !preferredIntensity) {
+        // Validate inputs
+        if (!age || !gender || !fitnessLevel || !goal || !availableTime || !preferredIntensity) {
             alert('Please complete all fields in your health profile!');
             return;
         }
 
-        // Create personalized plan
-        const plan = createPersonalizedPlan({
-            age: parseInt(age),
+        // Generate recommendations based on fitness data
+        const recommendations = generateRecommendations({
+            age: age,
             gender: gender,
-            fitnessLevel: parseInt(fitnessLevel),
-            primaryGoal: primaryGoal,
-            availableTime: parseInt(availableTime),
+            fitnessLevel: fitnessLevel,
+            goal: goal,
+            availableTime: availableTime,
             preferredIntensity: preferredIntensity
         });
 
-        // Display the plan
-        displayFitnessPlan(plan);
+        // Display recommendations
+        displayRecommendations(recommendations);
+        
+        // Update insights charts
+        updateInsightsCharts();
     }
 
-    function getInputValue(fieldName) {
-        // Try multiple selector strategies
-        const selectors = [
-            `[name="${fieldName}"]`,
-            `#${fieldName}`,
-            `input[placeholder*="${fieldName}"]`,
-            `select[title*="${fieldName}"]`
-        ];
+    function generateRecommendations(profile) {
+        const activities = Object.keys(fitnessData.activityStats);
+        const scoredActivities = [];
         
-        for (const selector of selectors) {
-            const element = document.querySelector(selector);
-            if (element) {
-                return element.value ? element.value.trim() : null;
+        // Score each activity based on user profile
+        activities.forEach(activity => {
+            const stats = fitnessData.activityStats[activity];
+            let score = 0;
+            
+            // Goal-based scoring
+            switch(profile.goal) {
+                case 'weight_loss':
+                    score += stats.avgCaloriesBurned * 3;
+                    score += stats.effectiveness * 2;
+                    break;
+                case 'muscle_gain':
+                    score += stats.strengthFocus * 4;
+                    score += stats.effectiveness * 2;
+                    break;
+                case 'endurance':
+                    score += stats.enduranceFocus * 4;
+                    score += stats.effectiveness * 2;
+                    break;
+                case 'maintenance':
+                    score += (stats.strengthFocus + stats.enduranceFocus) * 2;
+                    score += stats.effectiveness;
+                    break;
             }
-        }
-        return null;
+            
+            // Intensity matching
+            if (stats.avgIntensity === profile.preferredIntensity) {
+                score += 5;
+            }
+            
+            // Time compatibility (prefer activities close to user's available time)
+            const timeDiff = Math.abs(stats.avgDuration - profile.availableTime);
+            if (timeDiff <= 15) score += 3;
+            else if (timeDiff <= 30) score += 1;
+            
+            // Fitness level compatibility
+            const levelDiff = Math.abs(stats.avgFitnessLevel - profile.fitnessLevel);
+            if (levelDiff <= 1) score += 3;
+            else if (levelDiff <= 2) score += 1;
+            
+            scoredActivities.push({
+                name: activity,
+                score: score,
+                stats: stats
+            });
+        });
+        
+        // Sort by score and get top 3
+        scoredActivities.sort((a, b) => b.score - a.score);
+        return scoredActivities.slice(0, 3);
     }
 
-    function createPersonalizedPlan(profile) {
-        console.log('Creating plan for profile:', profile);
+    function displayRecommendations(recommendations) {
+        const container = document.getElementById('recommendationsContainer');
         
-        let plan = {
-            title: '',
-            description: '',
-            warmup: '',
-            workout: [],
-            coolDown: '',
-            recommendations: [],
-            weeklySchedule: []
+        if (!recommendations || recommendations.length === 0) {
+            container.innerHTML = '<p class="placeholder">No suitable recommendations found. Please adjust your profile.</p>';
+            return;
+        }
+        
+        let html = '<div class="recommendations-list">';
+        
+        recommendations.forEach((rec, index) => {
+            const stats = rec.stats;
+            html += `
+                <div class="recommendation-card">
+                    <h3>${rec.name}</h3>
+                    <p><strong>Why it's recommended:</strong> Excellent match for your ${document.getElementById('goal').options[document.getElementById('goal').selectedIndex].text} goals</p>
+                    <div class="recommendation-metrics">
+                        <div class="metric">Calories: <span>${stats.avgCaloriesBurned}/min</span></div>
+                        <div class="metric">Duration: <span>${stats.avgDuration}min</span></div>
+                        <div class="metric">Intensity: <span>${stats.avgIntensity}</span></div>
+                        <div class="metric">Effectiveness: <span>${stats.effectiveness}/10</span></div>
+                    </div>
+                    <p><strong>Expected Results:</strong> ${getExpectedResults(rec.name, document.getElementById('goal').value)}</p>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        container.innerHTML = html;
+    }
+
+    function getExpectedResults(activity, goal) {
+        const results = {
+            'weight_loss': 'High calorie burn for effective weight management',
+            'muscle_gain': 'Builds strength and promotes muscle growth',
+            'endurance': 'Improves cardiovascular endurance and stamina',
+            'maintenance': 'Maintains overall fitness and health'
         };
-
-        // Customize plan based on primary goal
-        switch(profile.primaryGoal.toLowerCase()) {
-            case 'weight loss':
-                plan.title = `High-Intensity Weight Loss Program`;
-                plan.description = `Fat-burning program designed for ${profile.gender}, age ${profile.age}, fitness level ${profile.fitnessLevel}/10`;
-                plan.warmup = '5-minute dynamic warm-up (jumping jacks, high knees, arm circles, leg swings)';
-                
-                if (profile.preferredIntensity === 'High') {
-                    plan.workout = [
-                        `HIIT Circuit Training (${profile.availableTime - 10} minutes):`,
-                        '• Burpees: 45 seconds work, 15 seconds rest',
-                        '• Mountain Climbers: 45 seconds work, 15 seconds rest', 
-                        '• Kettlebell Swings: 45 seconds work, 15 seconds rest',
-                        '• Jump Squats: 45 seconds work, 15 seconds rest',
-                        '• Plank to Push-up: 45 seconds work, 15 seconds rest',
-                        `• Repeat circuit ${Math.floor((profile.availableTime - 10) / 5)} times`
-                    ];
-                }
-                plan.coolDown = '5-minute static stretching (hamstrings, quads, chest, shoulders)';
-                plan.recommendations = [
-                    'Maintain 75-85% of maximum heart rate during workouts',
-                    'Combine with calorie-controlled diet for optimal results',
-                    `Drink ${2.5 + (profile.preferredIntensity === 'High' ? 0.5 : 0)}L water daily`,
-                    'Track progress with weekly measurements'
-                ];
-                plan.weeklySchedule = [
-                    'Monday: Full Body HIIT',
-                    'Tuesday: Active Recovery (30min walk)',
-                    'Wednesday: Strength + Cardio',
-                    'Thursday: Rest or Yoga',
-                    'Friday: Full Body HIIT', 
-                    'Saturday: Outdoor Activity',
-                    'Sunday: Rest'
-                ];
-                break;
-
-            case 'muscle gain':
-                plan.title = `Muscle Building Strength Program`;
-                plan.description = `Strength training program for ${profile.gender}, fitness level ${profile.fitnessLevel}/10`;
-                plan.warmup = '5-10 minute dynamic stretching and light cardio';
-                plan.workout = [
-                    `Strength Training (${profile.availableTime - 10} minutes):`,
-                    '• Barbell Squats: 3 sets of 8-12 reps',
-                    '• Bench Press: 3 sets of 8-12 reps',
-                    '• Bent-over Rows: 3 sets of 8-12 reps',
-                    '• Shoulder Press: 3 sets of 10-15 reps',
-                    '• Bicep Curls: 3 sets of 12-15 reps',
-                    '• Rest 60-90 seconds between sets'
-                ];
-                plan.coolDown = '5-minute full body stretching';
-                plan.recommendations = [
-                    'Focus on progressive overload - increase weight gradually',
-                    'Ensure protein intake: 1.6-2.2g per kg of body weight',
-                    'Get 7-9 hours of sleep for optimal recovery',
-                    'Consider protein timing around workouts'
-                ];
-                plan.weeklySchedule = [
-                    'Monday: Upper Body Strength',
-                    'Tuesday: Lower Body Strength', 
-                    'Wednesday: Active Recovery',
-                    'Thursday: Full Body Strength',
-                    'Friday: Rest',
-                    'Saturday: Full Body Hypertrophy',
-                    'Sunday: Rest'
-                ];
-                break;
-
-            case 'endurance improvement':
-                plan.title = `Endurance Building Program`;
-                plan.description = `Cardiovascular endurance program for ${profile.age} year old ${profile.gender}`;
-                plan.warmup = '5-minute light jogging and dynamic stretches';
-                
-                if (profile.preferredIntensity === 'High') {
-                    plan.workout = [
-                        `High-Intensity Endurance (${profile.availableTime - 10} minutes):`,
-                        '• Interval Running: 30s sprint, 60s walk (repeat 8-10x)',
-                        '• Or: Hill repeats - 45s uphill run, 90s walk down',
-                        '• Or: Fartlek training - varied pace running',
-                        `• Total workout time: ${profile.availableTime} minutes`
-                    ];
-                }
-                plan.coolDown = '5-minute walking and full body stretching';
-                plan.recommendations = [
-                    'Gradually increase distance/duration each week',
-                    'Monitor heart rate zones (aim for 70-80% max HR)',
-                    'Stay hydrated - drink during longer sessions',
-                    'Incorporate cross-training (cycling, swimming)'
-                ];
-                plan.weeklySchedule = [
-                    'Monday: Interval Training',
-                    'Tuesday: Moderate Pace Run',
-                    'Wednesday: Cross-Training',
-                    'Thursday: Tempo Run',
-                    'Friday: Active Recovery',
-                    'Saturday: Long Slow Distance',
-                    'Sunday: Rest'
-                ];
-                break;
-
-            default:
-                plan.title = 'General Fitness Program';
-                plan.workout = ['30-minute full body workout with cardio and strength components'];
-        }
-
-        return plan;
+        
+        return results[goal] || 'Supports your fitness goals effectively';
     }
 
-    function displayFitnessPlan(plan) {
-        console.log('Displaying fitness plan:', plan);
+    function updateInsightsCharts() {
+        // Update activity effectiveness chart
+        updateActivityEffectivenessChart();
         
-        // Find or create the fitness plan display area
-        let planContainer = document.querySelector('#fitnessPlan');
-        if (!planContainer) {
-            // Create container if it doesn't exist
-            planContainer = document.createElement('div');
-            planContainer.id = 'fitnessPlan';
-            document.body.appendChild(planContainer);
-        }
-
-        // Build the plan HTML
-        const planHTML = `
-            <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-top: 20px;">
-                <h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px;">${plan.title}</h2>
-                
-                <div style="margin-bottom: 15px;">
-                    <strong>Description:</strong> ${plan.description}
-                </div>
-                
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
-                    <div>
-                        <h3 style="color: #e74c3c;">Workout Structure</h3>
-                        <p><strong>Warm-up:</strong> ${plan.warmup}</p>
-                        
-                        <h4>Main Workout:</h4>
-                        <ul style="list-style: none; padding-left: 0;">
-                            ${plan.workout.map(item => `<li style="margin-bottom: 8px; padding-left: 0;">${item}</li>`).join('')}
-                        </ul>
-                        
-                        <p><strong>Cool-down:</strong> ${plan.coolDown}</p>
-                    </div>
-                    
-                    <div>
-                        <h3 style="color: #27ae60;">Weekly Schedule</h3>
-                        <ul style="list-style: none; padding-left: 0;">
-                            ${plan.weeklySchedule.map(item => `<li style="margin-bottom: 5px; padding: 5px; background: #ecf0f1; border-radius: 3px;">${item}</li>`).join('')}
-                        </ul>
-                    </div>
-                </div>
-                
-                <div style="background: #e8f4fc; padding: 15px; border-radius: 5px;">
-                    <h3 style="color: #2980b9; margin-top: 0;">Key Recommendations</h3>
-                    <ul>
-                        ${plan.recommendations.map(rec => `<li style="margin-bottom: 8px;">${rec}</li>`).join('')}
-                    </ul>
-                </div>
-                
-                <div style="margin-top: 15px; padding: 10px; background: #fff3cd; border-radius: 5px;">
-                    <strong>Note:</strong> Always consult with a healthcare professional before starting any new fitness program. Listen to your body and adjust intensity as needed.
-                </div>
-            </div>
-        `;
-
-        // Update the container
-        planContainer.innerHTML = planHTML;
-        
-        // Scroll to the plan
-        planContainer.scrollIntoView({ behavior: 'smooth' });
-        
-        console.log('Fitness plan displayed successfully');
+        // Update calories vs duration chart
+        updateCaloriesDurationChart();
     }
+
+    function updateActivityEffectivenessChart() {
+        const container = document.getElementById('activityEffectivenessChart');
+        const activities = Object.entries(fitnessData.activityStats)
+            .sort((a, b) => b[1].effectiveness - a[1].effectiveness)
+            .slice(0, 5);
+        
+        let html = '<div class="chart">';
+        const maxEffectiveness = Math.max(...activities.map(a => a[1].effectiveness));
+        
+        activities.forEach(([name, stats]) => {
+            const height = (stats.effectiveness / maxEffectiveness) * 100;
+            html += `
+                <div class="bar-container">
+                    <div class="bar" style="height: ${height}%"></div>
+                    <div class="bar-label">${name}</div>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        container.innerHTML = html;
+    }
+
+    function updateCaloriesDurationChart() {
+        const container = document.getElementById('caloriesDurationChart');
+        const activities = Object.entries(fitnessData.activityStats).slice(0, 6);
+        
+        let html = '<div class="chart">';
+        const maxCalories = Math.max(...activities.map(a => a[1].avgCaloriesBurned));
+        const maxDuration = Math.max(...activities.map(a => a[1].avgDuration));
+        
+        activities.forEach(([name, stats]) => {
+            const calorieHeight = (stats.avgCaloriesBurned / maxCalories) * 100;
+            const durationHeight = (stats.avgDuration / maxDuration) * 100;
+            
+            html += `
+                <div class="bar-container" style="display: inline-block; width: 30px; margin: 0 5px;">
+                    <div class="bar" style="height: ${calorieHeight}%; background: #667eea; margin-bottom: 5px;"></div>
+                    <div class="bar" style="height: ${durationHeight}%; background: #764ba2;"></div>
+                    <div class="bar-label">${name.split(' ')[0]}</div>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        container.innerHTML = html;
+    }
+
+    // Initialize charts on page load
+    updateInsightsCharts();
 });
